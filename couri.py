@@ -85,7 +85,8 @@ def send_mail(host: str, port: int, username: str, password: str,
     if mime_message.get('Cc'):
         recipients += [r.strip() for r in mime_message['Cc'].split(',')]
     recipients += bcc
-    recipients = list(set(r for r in recipients if r))  # deduplicate
+    # There might be duplicate addresses in cc and bcc list, deduplicate them
+    recipients = list(set(r for r in recipients if r))
 
     try:
         context = ssl.create_default_context() if verify_tls else None
