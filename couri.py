@@ -42,6 +42,14 @@ def get_args() -> Namespace:
     return parser.parse_args()
 
 def get_piped_input() -> str:
+    """
+    if stdin is not a terminal i.e. data is being piped in
+    (for example: echo "hello" | python script.py)
+    return that data to be set as body of the message
+    """
+    
+    # isatty returns True if the script’s standard input is connected to a terminal (interactive use),
+    # and False if it’s connected to a pipe or a file.
     if not sys.stdin.isatty():
         return sys.stdin.read()
     return ''
