@@ -17,6 +17,7 @@ from typing import List
 import ssl
 
 def get_args() -> Namespace:
+    """Set arguments and options for CLI use"""
     parser = ArgumentParser(
         description="couri: send SMTP mail easily (Python 3.6+)",
         formatter_class=RawTextHelpFormatter
@@ -40,6 +41,7 @@ def get_args() -> Namespace:
     return parser.parse_args()
 
 def get_piped_input() -> str:
+    """If not body as an argument to the script, look for text on the standard input i.e. assume user has piped it"""
     if not sys.stdin.isatty():
         return sys.stdin.read()
     return ''
@@ -100,7 +102,6 @@ def send_mail(host: str, port: int, username: str, password: str,
 
         if verbose:
             print(f"Email successfully sent to: {', '.join(recipients)}")
-
     except SMTPConnectError as e:
         print(f"Error connecting to SMTP server: {e}")
         sys.exit(1)
