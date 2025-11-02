@@ -1,7 +1,6 @@
 #!/usr/bin/env -S uv run --script
 # /// script
-# requires-python = ">=3.11"
-# dependencies = ["requests", "rich"]
+# requires-python = ">=3.6"
 # ///
 
 """couri - simple script/module for sending SMTP mail"""
