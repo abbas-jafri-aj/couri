@@ -18,6 +18,7 @@ import ssl
 
 def get_args() -> Namespace:
     """Set arguments and options for CLI use"""
+
     parser = ArgumentParser(
         description="couri: send SMTP mail easily (Python 3.6+)",
         formatter_class=RawTextHelpFormatter
@@ -48,6 +49,7 @@ def get_piped_input() -> str:
 def build_mime_message(sender: str, to: List[str], cc: List[str], bcc: List[str],
                        subject: str, body: str, mimetype: str, attachments: List[str]) -> MIMEMultipart:
     """Build a MIME message with optional attachments"""
+
     msg_type = 'mixed' if attachments else 'alternative'
     msg = MIMEMultipart(msg_type)
 
@@ -81,6 +83,8 @@ def build_mime_message(sender: str, to: List[str], cc: List[str], bcc: List[str]
 def send_mail(host: str, port: int, username: str, password: str,
               mime_message: MIMEMultipart, bcc: List[str],
               verbose: bool = False, verify_tls: bool = False) -> None:
+    """Piece together user arguments, prepare SMTP object, check flags and send mail"""
+
     recipients = [r.strip() for r in mime_message['To'].split(',')]
     if mime_message.get('Cc'):
         recipients += [r.strip() for r in mime_message['Cc'].split(',')]
