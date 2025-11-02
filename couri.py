@@ -101,7 +101,6 @@ def send_mail(host: str, port: int, username: str, password: str,
             if username and password:
                 smtp.login(username, password)
             smtp.sendmail(mime_message['From'], recipients, mime_message.as_string())
-
         if verbose:
             print(f"Email successfully sent to: {', '.join(recipients)}")
     except SMTPConnectError as e:
