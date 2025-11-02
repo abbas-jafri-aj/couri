@@ -41,7 +41,6 @@ def get_args() -> Namespace:
     return parser.parse_args()
 
 def get_piped_input() -> str:
-    """If not body as an argument to the script, look for text on the standard input i.e. assume user has piped it"""
     if not sys.stdin.isatty():
         return sys.stdin.read()
     return ''
@@ -60,6 +59,8 @@ def build_mime_message(sender: str, to: List[str], cc: List[str], bcc: List[str]
     if subject:
         msg['Subject'] = subject
 
+    # If email body has not been passed as an argument to the script,
+    # look for text on the standard input i.e. assume user has piped it
     if not body:
         body = get_piped_input()
     if body:
