@@ -6,7 +6,8 @@
 """couri - simple script/module for sending SMTP mail"""
 
 import sys
-from argparse import ArgumentParser, Namespace, RawTextHelpFormatter
+import ssl
+from argparse import Namespace, ArgumentParser, RawTextHelpFormatter
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
@@ -14,7 +15,6 @@ from email.utils import formatdate
 from smtplib import SMTP, SMTPConnectError, SMTPAuthenticationError, SMTPSenderRefused, SMTPRecipientsRefused, SMTPDataError, SMTPException
 from pathlib import Path
 from typing import List
-import ssl
 
 def get_args() -> Namespace:
     """Set arguments and options for CLI use"""
@@ -43,9 +43,9 @@ def get_args() -> Namespace:
 
 def get_piped_input() -> str:
     """
-    if stdin is not a terminal i.e. data is being piped in
-    (for example: echo "hello" | python script.py)
-    return that data to be set as body of the message
+    if stdin is not a terminal i.e. text is being piped in
+    for example: echo "hello" | python couri.py
+    return that text to be set as body of the message
     """
     
     # isatty returns True if the script’s standard input is connected to a terminal (interactive use),
