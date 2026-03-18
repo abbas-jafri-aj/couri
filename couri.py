@@ -113,7 +113,7 @@ def send_mail(host: str, port: int, username: str, password: str,
 
     # Build the full recipient list from To, Cc, and Bcc fields.
     # SMTP envelope (sendmail) needs all recipients, but Bcc must NOT appear
-    # in the MIME headers -- that's why Bcc is passed separately.
+    # in the MIME headers. That is why Bcc is passed separately.
     recipients = [r.strip() for r in mime_message['To'].split(',')]
     if mime_message.get('Cc'):
         recipients += [r.strip() for r in mime_message['Cc'].split(',')]
@@ -130,7 +130,7 @@ def send_mail(host: str, port: int, username: str, password: str,
         # STARTTLS and certificate verification are independent concerns:
         # - tls=True: upgrade the connection to TLS (required by port 587 servers)
         # - verify_tls=True: also verify the server's certificate (implies tls)
-        # verify_tls implies tls -- you can't verify a cert without upgrading.
+        # verify_tls implies tls, you can't verify a cert without upgrading.
         use_tls = tls or verify_tls
         context = ssl.create_default_context() if verify_tls else None
 
