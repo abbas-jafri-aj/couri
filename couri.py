@@ -37,7 +37,8 @@ def get_args() -> Namespace:
     parser.add_argument('-m', '--mimetype', type=str, default='plain', choices=['plain', 'html'], help='Mime type for body (plain or html)')
     parser.add_argument('-a', '--attachment', type=str, nargs='*', default=[], help='Attachment file(s)')
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output')
-    parser.add_argument('--verify-tls', action='store_true', help='Verify SMTP TLS certificate')
+    parser.add_argument('--tls', action='store_true', help='Enable STARTTLS (required for port 587)')
+    parser.add_argument('--verify-tls', action='store_true', help='Enable STARTTLS and verify server certificate')
 
     return parser.parse_args()
 
@@ -56,8 +57,13 @@ def get_piped_input() -> str:
 
 def build_mime_message(sender: str, to: List[str], cc: List[str], bcc: List[str],
                        subject: str, body: str, mimetype: str, attachments: List[str]) -> MIMEMultipart:
-    """Build a MIME message with optional attachments"""
+    """Build a MIME message with optional attachments."""
 
+    # MIME multipart type matters for how mail clients render the message:
+    # - 'mixed': body + attachments as separate parts (attachments shown as downloadable files)
+    # - 'alternative': multiple representations of the same content (e.g. plain + html)
+    # When there are no attachments, 'alternative' is the safer default because some
+    # mail clients misrender 'mixed' messages that only contain a text body.
     msg_type = 'mixed' if attachments else 'alternative'
     msg = MIMEMultipart(msg_type)
 
@@ -90,25 +96,57 @@ def build_mime_message(sender: str, to: List[str], cc: List[str], bcc: List[str]
 
 def send_mail(host: str, port: int, username: str, password: str,
               mime_message: MIMEMultipart, bcc: List[str],
-              verbose: bool = False, verify_tls: bool = False) -> None:
-    """Piece together user arguments, prepare SMTP object, check flags and send mail"""
+              verbose: bool = False, tls: bool = False, verify_tls: bool = False) -> None:
+    """Connect to SMTP server, optionally upgrade to TLS, authenticate, and send.
 
+    Args:
+        host: SMTP server hostname or IP.
+        port: SMTP port (25 for plain, 587 for STARTTLS, 465 for implicit SSL).
+        username: SMTP username. Empty string to skip authentication.
+        password: SMTP password. Empty string to skip authentication.
+        mime_message: Pre-built MIME message from build_mime_message().
+        bcc: BCC recipients (not in MIME headers, but included in SMTP envelope).
+        verbose: Print success message after sending.
+        tls: Issue STARTTLS to upgrade the connection to TLS.
+        verify_tls: Verify the server's TLS certificate. Implies tls=True.
+    """
+
+    # Build the full recipient list from To, Cc, and Bcc fields.
+    # SMTP envelope (sendmail) needs all recipients, but Bcc must NOT appear
+    # in the MIME headers -- that's why Bcc is passed separately.
     recipients = [r.strip() for r in mime_message['To'].split(',')]
     if mime_message.get('Cc'):
         recipients += [r.strip() for r in mime_message['Cc'].split(',')]
     recipients += bcc
-    # There might be duplicate addresses in cc and bcc list, deduplicate them
+    # Deduplicate: a recipient might appear in both To and Cc, or Cc and Bcc.
+    # Sending to the same address twice is harmless but wasteful.
     recipients = list(set(r for r in recipients if r))
 
+    # Each SMTP exception is caught separately so the error message is specific
+    # and actionable. We exit with code 1 on any failure rather than raising,
+    # because couri is designed for pipelines where a non-zero exit code signals
+    # failure to the calling process.
     try:
+        # STARTTLS and certificate verification are independent concerns:
+        # - tls=True: upgrade the connection to TLS (required by port 587 servers)
+        # - verify_tls=True: also verify the server's certificate (implies tls)
+        # verify_tls implies tls -- you can't verify a cert without upgrading.
+        use_tls = tls or verify_tls
         context = ssl.create_default_context() if verify_tls else None
+
         with SMTP(host, port) as smtp:
+            # EHLO identifies us to the server and discovers supported extensions.
+            # Must be called before STARTTLS so the server advertises TLS support.
             smtp.ehlo()
-            if context:
+            if use_tls:
+                # STARTTLS upgrades the existing plaintext connection to TLS.
+                # If verify_tls is set, we pass a context that checks the cert
+                # against the system's CA bundle. Without it, the connection is
+                # encrypted but the server's identity is not verified (acceptable
+                # for internal/trusted servers).
                 smtp.starttls(context=context)
-                smtp.ehlo()
-            elif verify_tls:
-                smtp.starttls()
+                # Second EHLO is required by RFC 3207: after STARTTLS, the server
+                # resets its knowledge of client capabilities, so we re-identify.
                 smtp.ehlo()
             if username and password:
                 smtp.login(username, password)
@@ -152,4 +190,5 @@ if __name__ == "__main__":
     )
 
     send_mail(args.host, args.port, args.username, args.password,
-              message, args.bcc, verbose=args.verbose, verify_tls=args.verify_tls)
+              message, args.bcc, verbose=args.verbose, tls=args.tls,
+              verify_tls=args.verify_tls)
